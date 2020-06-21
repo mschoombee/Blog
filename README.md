@@ -1,2 +1,2 @@
 # Blog
-Solutions &amp; code related to blog posts
+Solutions &amp; Code Related to Blog Posts
