@@ -46,9 +46,8 @@ Connect-PowerBIServiceAccount
 
 Automated Connection - Running the code below will connect without user prompts 
 
-Note: 
-** The account you're using will need Power BI administrator permissions. 
-** The method below will not work if MFA is required for the account.
+** The account you're using will need Power BI administrator permissions
+** The method below will not work if MFA is required for the account
 
 -------------------------------------------------------------------------------------------#>
 
