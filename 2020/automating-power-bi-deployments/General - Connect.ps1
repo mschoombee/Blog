@@ -44,7 +44,7 @@ Connect-PowerBIServiceAccount
 
 <#-------------------------------------------------------------------------------------------
 
-Automated Connection - Running the code below will connect without user prompts 
+Automated Connection with Username & Password - Running the code below will connect without user prompts 
 
 ** The account you're using will need Power BI administrator permissions
 ** The method below will not work if MFA is required for the account
@@ -55,10 +55,32 @@ Automated Connection - Running the code below will connect without user prompts
 $PbiUser = "me@me.com"
 $PbiPassword = "MyPassword"
 
-#Create secure string for password 
+#Create secure string and credential for username & password 
 $PbiSecurePassword = ConvertTo-SecureString $PbiPassword -Force -AsPlainText
 $PbiCredential = New-Object Management.Automation.PSCredential($PbiUser, $PbiSecurePassword)
 
 #Connect to the Power BI service
-Connect-PowerBIServiceAccount -Credential $PbiCredential
+Connect-PowerBIServiceAccount -Credential $PbiCredential 
+
+
+
+<#-------------------------------------------------------------------------------------------
+
+Automated Connection with Service Principal - Running the code below will connect without user prompts 
+
+** The Service Principal will need Power BI administrator permissions
+
+-------------------------------------------------------------------------------------------#>
+
+#Variables 
+$AppId = "MyAppId"
+$TenantId = "MyServicePrincipalTenantId"
+$ClientSecret = "MyClientSecret" 
+
+#Create secure string & credential for application id and client secret
+$PbiSecurePassword = ConvertTo-SecureString $ClientSecret -Force -AsPlainText
+$PbiCredential = New-Object Management.Automation.PSCredential($AppId, $PbiSecurePassword)
+
+#Connect to the Power BI service
+Connect-PowerBIServiceAccount -ServicePrincipal -TenantId $TenantId -Credential $PbiCredential
 
