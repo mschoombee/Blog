@@ -1,0 +1,329 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "_SubscriptionId" : {
+            "defaultValue": "00000000-0000-0000-0000-000000000000",
+            "type": "String", 
+            "metadata": {
+                "description": "Azure Subscription Id."
+            }
+        },
+        "_CustomerName": {
+            "defaultValue": "TestCustomer",
+            "type": "String", 
+            "metadata": {
+                "description": "Name of the customer. This will be used in a tag for easy reference."
+            }
+        },
+        "_CustomerPrefix": {
+            "defaultValue": "tc",
+            "type": "String", 
+            "metadata": {
+                "description": "Customer prefix. This will be used in the names of resources for easy reference."
+            }
+        },
+        "_Location": {
+            "defaultValue": "West US",
+            "type": "String", 
+            "metadata": {
+                "description": "Name of the location for the VM."
+            }
+        },
+        "_AdminUserName": {
+            "defaultValue": "MyAdminUser",
+            "type": "String", 
+            "metadata": {
+                "description": "Local administrator account user name."
+            } 
+        }, 
+        "_AdminPassword": {
+            "defaultValue": "MyAdminPassword",
+            "type": "String", 
+            "metadata": {
+                "description": "Local administrator account password."
+            } 
+        },
+        "_SecurityRuleIpAddress": {
+            "defaultValue": "127.0.0.1",
+            "type": "String", 
+            "metadata": {
+                "description": "IP Address to grant RDP access to."
+            } 
+        }
+    },
+    "variables": {
+        "_ResourceGroupName": "[concat('28t-rg-', parameters('_CustomerPrefix'))]",
+        "_NetworkSecurityGroupName": "[concat('28t-', parameters('_CustomerPrefix'), '-nsg-1')]", 
+        "_VirtualNetworkName": "[concat('28t-', parameters('_CustomerPrefix'), '-vnet-1')]",
+        "_VirtualSubnetName": "[concat('28t-', parameters('_CustomerPrefix'), '-subnet-1')]", 
+        "_VirtualMachineName": "[concat('28t-vm-', parameters('_CustomerPrefix'), '-dev')]",
+        "_VirtualMachineSize": "Standard_D4as_v4", 
+        "_ImageSku": "20h2-pron-g2", 
+        "_OsDiskName": "[concat(variables('_VirtualMachineName'), '-osdisk-1')]", 
+        "_DataDiskName": "[concat(variables('_VirtualMachineName'), '-datadisk-1')]", 
+        "_NetworkInterfaceName": "[concat(variables('_VirtualMachineName'), '-nic-1')]", 
+        "_PublicIpAddressName": "[concat(variables('_VirtualMachineName'), '-ip-1')]",
+        "_ShutdownScheduleName": "[concat('shutdown-computevm-', variables('_VirtualMachineName'))]",
+        "_ShutdownTime": "1900",
+        "_ShutdownTimeZone": "US Mountain Standard Time"
+    },
+    "resources": [
+        {
+            "type": "Microsoft.Network/networkSecurityGroups",
+            "apiVersion": "2020-11-01",
+            "name": "[variables('_NetworkSecurityGroupName')]",
+            "location": "[parameters('_Location')]",
+            "tags": {
+                "Customer": "[parameters('_CustomerName')]"
+            },
+            "properties": {
+                "securityRules": [
+                    {
+                        "name": "Allow-PETER-RDP",
+                        "properties": {
+                            "protocol": "TCP",
+                            "sourcePortRange": "*",
+                            "destinationPortRange": "3389",
+                            "sourceAddressPrefix": "[parameters('_SecurityRuleIpAddress')]",
+                            "destinationAddressPrefix": "*",
+                            "access": "Allow",
+                            "priority": 100,
+                            "direction": "Inbound",
+                            "sourcePortRanges": [],
+                            "destinationPortRanges": [],
+                            "sourceAddressPrefixes": [],
+                            "destinationAddressPrefixes": []
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "type": "Microsoft.Network/publicIPAddresses",
+            "apiVersion": "2020-11-01",
+            "name": "[variables('_PublicIpAddressName')]",
+            "location": "[parameters('_Location')]",
+            "tags": {
+                "Customer": "[parameters('_CustomerName')]"
+            },
+            "properties": {
+                "publicIPAddressVersion": "IPv4",
+                "publicIPAllocationMethod": "Static"
+            }
+        },
+        {
+            "type": "Microsoft.Network/virtualNetworks",
+            "apiVersion": "2020-11-01",
+            "name": "[variables('_VirtualNetworkName')]",
+            "location": "[parameters('_Location')]",
+            "tags": {
+                "Customer": "[parameters('_CustomerName')]"
+            },
+            "properties": {
+                "addressSpace": {
+                    "addressPrefixes": [
+                        "10.2.0.0/28"
+                    ]
+                },
+                "subnets": [
+                    {
+                        "name": "[variables('_VirtualSubnetName')]",
+                        "properties": {
+                            "addressPrefix": "10.2.0.0/28",
+                            "delegations": [],
+                            "privateEndpointNetworkPolicies": "Enabled",
+                            "privateLinkServiceNetworkPolicies": "Enabled"
+                        }
+                    }
+                ],
+                "virtualNetworkPeerings": [],
+                "enableDdosProtection": false
+            }
+        }, 
+        {
+            "type": "Microsoft.Network/virtualNetworks/subnets",
+            "apiVersion": "2020-11-01",
+            "name": "[concat(variables('_VirtualNetworkName'), '/', variables('_VirtualSubnetName'))]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/virtualNetworks', variables('_VirtualNetworkName'))]"
+            ],
+            "properties": {
+                "addressPrefix": "10.2.0.0/28",
+                "delegations": [],
+                "privateEndpointNetworkPolicies": "Enabled",
+                "privateLinkServiceNetworkPolicies": "Enabled"
+            }
+        }, 
+        {
+            "type": "Microsoft.Network/networkInterfaces",
+            "apiVersion": "2020-11-01",
+            "name": "[variables('_NetworkInterfaceName')]",
+            "location": "[parameters('_Location')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/publicIPAddresses', variables('_PublicIpAddressName'))]",
+                "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('_VirtualNetworkName'), variables('_VirtualSubnetName'))]",
+                "[resourceId('Microsoft.Network/networkSecurityGroups', variables('_NetworkSecurityGroupName'))]"
+            ],
+            "tags": {
+                "Customer": "[parameters('_CustomerName')]"
+            },
+            "properties": {
+                "ipConfigurations": [
+                    {
+                        "name": "ipconfig1",
+                        "properties": {
+                            "privateIPAddress": "10.2.0.4",
+                            "privateIPAllocationMethod": "Dynamic",
+                            "publicIPAddress": {
+                                "id": "[resourceId('Microsoft.Network/publicIPAddresses', variables('_PublicIpAddressName'))]"
+                            },
+                            "subnet": {
+                                "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('_VirtualNetworkName'), variables('_VirtualSubnetName'))]"
+                            },
+                            "primary": true,
+                            "privateIPAddressVersion": "IPv4"
+                        }
+                    }
+                ],
+                "dnsSettings": {
+                    "dnsServers": []
+                },
+                "enableAcceleratedNetworking": false,
+                "enableIPForwarding": false,
+                "networkSecurityGroup": {
+                    "id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('_NetworkSecurityGroupName'))]"
+                }
+            }
+        },
+        {
+            "type": "Microsoft.Compute/disks",
+            "apiVersion": "2020-12-01",
+            "name": "[variables('_DataDiskName')]",
+            "location": "[parameters('_Location')]",
+            "tags": {
+                "Customer": "[parameters('_CustomerName')]"
+            },
+            "sku": {
+                "name": "Standard_LRS",
+                "tier": "Standard"
+            },
+            "properties": {
+                "creationData": {
+                    "createOption": "Empty"
+                },
+                "diskSizeGB": 256,
+                "diskIOPSReadWrite": 500,
+                "diskMBpsReadWrite": 60,
+                "encryption": {
+                    "type": "EncryptionAtRestWithPlatformKey"
+                },
+                "diskState": "Reserved",
+                "networkAccessPolicy": "AllowAll"
+            }
+        },
+        {
+            "type": "Microsoft.Compute/virtualMachines",
+            "apiVersion": "2021-03-01",
+            "name": "[variables('_VirtualMachineName')]",
+            "location": "[parameters('_Location')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/networkInterfaces', variables('_NetworkInterfaceName'))]"
+            ],
+            "tags": {
+                "Customer": "[parameters('_CustomerName')]"
+            },
+            "properties": {
+                "hardwareProfile": {
+                    "vmSize": "[variables('_VirtualMachineSize')]"
+                },
+                "osProfile": {
+                    "computerName": "[variables('_VirtualMachineName')]",
+                    "adminUsername": "[parameters('_AdminUserName')]",
+                    "adminPassword": "[parameters('_AdminPassword')]",
+                    "windowsConfiguration": {
+                        "provisionVMAgent": true,
+                        "enableAutomaticUpdates": true,
+                        "patchSettings": {
+                            "patchMode": "AutomaticByOS",
+                            "enableHotpatching": false
+                        }
+                    },
+                   "allowExtensionOperations": true
+                },
+                "storageProfile": {
+                    "imageReference": {
+                        "publisher": "MicrosoftWindowsDesktop",
+                        "offer": "Windows-10",
+                        "sku": "[variables('_ImageSku')]",
+                        "version": "latest"
+                    },
+                    "osDisk": {
+                        "osType": "Windows",
+                        "name": "[variables('_OsDiskName')]",
+                        "createOption": "FromImage",
+                        "caching": "ReadWrite",
+                        "managedDisk": {
+                            "storageAccountType": "Standard_LRS"
+                        }
+                    },
+                    "dataDisks": [
+                        {
+                            "lun": 0,
+                            "name": "[variables('_DataDiskName')]",
+                            "createOption": "Attach",
+                            "caching": "ReadWrite",
+                            "writeAcceleratorEnabled": false,
+                            "managedDisk": {
+                                "id": "[concat('/subscriptions/', parameters('_SubscriptionId'), '/resourceGroups/', variables('_ResourceGroupName'), '/providers/Microsoft.Compute/disks/', variables('_DataDiskName'))]"
+                            },
+                            "toBeDetached": false
+                        }
+                    ]
+                },
+                "networkProfile": {
+                    "networkInterfaces": [
+                        {
+                            "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('_NetworkInterfaceName'))]"
+                        }
+                    ]
+                },
+                "diagnosticsProfile": {
+                    "bootDiagnostics": {
+                        "enabled": true
+                    }
+                },
+                "licenseType": "Windows_Client"
+            },
+            "resources": [
+                {
+                    "type": "Microsoft.DevTestLab/schedules",
+                    "apiVersion": "2018-09-15",
+                    "name": "[variables('_ShutdownScheduleName')]",
+                    "location": "[parameters('_Location')]",
+                    "tags": {
+                        "Customer": "[parameters('_CustomerName')]"
+                    },
+                    "dependsOn": [
+                        "[concat('Microsoft.Compute/virtualMachines/', variables('_VirtualMachineName'))]"
+                    ],
+                    "properties": {
+                        "status": "Enabled",
+                        "taskType": "ComputeVmShutdownTask",
+                        "dailyRecurrence": {
+                            "time": "[variables('_ShutdownTime')]"
+                        },
+                        "timeZoneId": "[variables('_ShutdownTimeZone')]",
+                        "notificationSettings": {
+                            "status": "Enabled",
+                            "timeInMinutes": 30,
+                            "emailRecipient": "me@me.com",
+                            "notificationLocale": "en"
+                        },
+                        "targetResourceId": "[resourceId('Microsoft.Compute/virtualMachines', variables('_VirtualMachineName'))]"
+                    }
+                }
+            ]
+        }
+    ]
+}
