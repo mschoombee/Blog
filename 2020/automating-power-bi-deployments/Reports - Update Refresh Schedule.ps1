@@ -105,7 +105,7 @@ try {
     -------------------------------------------------------------------------------------------#>
 
     #API url for the refresh schedule
-    $ApiUrl = "datasets/" + $PbiReportObject.DatasetId + "/refreshSchedule" 
+    $ApiUrl = "groups/" + $WorkspaceObject.Id + "datasets/" + $PbiReportObject.DatasetId + "/refreshSchedule" 
 
     $ApiRequestBody = @"
         {

@@ -95,10 +95,11 @@ try {
     -------------------------------------------------------------------------------------------#>
 
     #API url for the refresh
-    $ApiUrl = "datasets/" + $PbiReportObject.DatasetId + "/refreshes" 
+    $ApiUrl = "groups/" + $WorkspaceObject.Id + "/datasets/" + $PbiReportObject.DatasetId + "/refreshes" 
 
     $ApiRequestBody = @"
         {
+            "type": "Full", 
             "notifyOption": "MailOnCompletion"
         }
 "@ 
