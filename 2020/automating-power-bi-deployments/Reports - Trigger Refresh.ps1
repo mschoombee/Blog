@@ -1,4 +1,4 @@
-﻿<# 
+<# 
     ** Check the execution policy for the current machine/user, and set it to unrestricted (if required) ** 
 
     Get-ExecutionPolicy -List
@@ -21,7 +21,7 @@
     ** This script will trigger a dataset refresh.
 
     ** Execute this script in the following way in a PowerShell session (run as admin)
-        ex. &'c:\PowerShell\Power BI\Reports - Trigger Refresh.ps1' -WorkspaceName 'MyWorkspace' -ReportName 'MyReportName'
+        ex. &'c:\PowerShell\Power BI\Reports - Trigger Refresh.ps1' -WorkspaceName 'MyWorkspace' -DatasetName 'MyDatasetName'
 
     
     Technical References
@@ -50,7 +50,7 @@ param
     [Parameter(Mandatory=$true)]
     [ValidateNotNullOrEmpty()] 
     [String]
-    $ReportName
+    $DatasetName
 )
 
 <#-------------------------------------------------------------------------------------------
@@ -84,8 +84,8 @@ try {
     #Retrieve the workspace
     $WorkspaceObject = (Get-PowerBIWorkspace -Scope Organization -Name $WorkspaceName)
 
-    #Retrieve the report
-    $PbiReportObject = (Get-PowerBIReport -Workspace $WorkspaceObject -Name $ReportName)
+    #Retrieve the dataset
+    $PbiDatasetObject = (Get-PowerBIDataset -Scope Organization -Workspace $WorkspaceObject -Name $DatasetName)
     
 
     <#-------------------------------------------------------------------------------------------
@@ -95,7 +95,7 @@ try {
     -------------------------------------------------------------------------------------------#>
 
     #API url for the refresh
-    $ApiUrl = "groups/" + $WorkspaceObject.Id + "/datasets/" + $PbiReportObject.DatasetId + "/refreshes" 
+    $ApiUrl = "groups/" + $WorkspaceObject.Id + "/datasets/" + $PbiDatasetObject.Id + "/refreshes" 
 
     $ApiRequestBody = @"
         {
@@ -119,5 +119,3 @@ catch {
 }
 
 exit
-
-
