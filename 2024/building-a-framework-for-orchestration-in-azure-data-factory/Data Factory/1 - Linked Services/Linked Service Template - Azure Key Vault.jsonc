@@ -1,0 +1,20 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "resources": [
+        {
+            "type": "Microsoft.DataFactory/factories/linkedservices",
+            "name": "@[DataFactory]/@[LinkedService]",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "annotations": [
+                    "FrameworkVersion=1.0"
+                ],
+                "type": "AzureKeyVault",
+                "typeProperties": {
+                    "baseUrl": "@[Url]"
+                }                               
+            }
+        }
+    ]
+}

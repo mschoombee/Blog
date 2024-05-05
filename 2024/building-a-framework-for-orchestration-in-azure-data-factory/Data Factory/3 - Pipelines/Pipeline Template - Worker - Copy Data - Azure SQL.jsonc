@@ -1,0 +1,199 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "resources": [
+        {
+            "type": "Microsoft.DataFactory/factories/pipelines",
+            "name": "@[DataFactory]/Copy Data - @[SourceSystem]",
+            "apiVersion": "2018-06-01",
+            "dependsOn": [],
+            "properties": {
+                "folder": {
+                    "name": "Workers"
+                },
+                "annotations": [
+                    "FrameworkVersion=1.0"
+                ],
+                "concurrency": 5,
+                "parameters": {
+                    "TaskKey": {
+                        "type": "int"
+                    }
+                },
+                "activities": [
+                    {
+                        "name": "Get Task Queries",
+                        "description": "Gets all the source queries for the task we are executing, from the [ETL].[TaskQuery] table.",
+                        "type": "Lookup",
+                        "dependsOn": [],
+                        "policy": {
+                            "timeout": "0.00:10:00",
+                            "retry": 0,
+                            "retryIntervalInSeconds": 30,
+                            "secureOutput": false,
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "source": {
+                                "type": "AzureSqlSource",
+                                "sqlReaderStoredProcedureName": "[[ETL].[GetTaskQueries]",
+                                "storedProcedureParameters": {
+                                    "TaskKey": {
+                                        "type": "Int32",
+                                        "value": {
+                                            "value": "@pipeline().parameters.TaskKey",
+                                            "type": "Expression"
+                                        }
+                                    },
+                                    "TaskName": {
+                                        "type": "String",
+                                        "value": null
+                                    }
+                                },
+                                "queryTimeout": "00:10:00",
+                                "partitionOption": "None"
+                            },
+                            "dataset": {
+                                "referenceName": "@[AdminDataset]",
+                                "type": "DatasetReference"
+                            },
+                            "firstRowOnly": false
+                        }
+                    },
+                    {
+                        "name": "Truncate Staging Table",
+                        "type": "Script",
+                        "dependsOn": [
+                            {
+                                "activity": "Get Task Queries",
+                                "dependencyConditions": [
+                                    "Succeeded"
+                                ]
+                            }
+                        ],
+                        "policy": {
+                            "timeout": "0.00:10:00",
+                            "retry": 0,
+                            "retryIntervalInSeconds": 30,
+                            "secureOutput": false,
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "linkedServiceName": {
+                            "referenceName": "@[StagingLinkedService]",
+                            "type": "LinkedServiceReference"
+                        },
+                        "typeProperties": {
+                            "scripts": [
+                                {
+                                    "type": "NonQuery",
+                                    "text": {
+                                        "value": "truncate table [@{activity('Get Task Queries').output.value[0].TargetSchema}].[@{activity('Get Task Queries').output.value[0].TargetTable}];",
+                                        "type": "Expression"
+                                    }
+                                }
+                            ],
+                            "scriptBlockExecutionTimeout": "00:10:00"
+                        }
+                    },
+                    {
+                        "name": "For Each Task Query",
+                        "type": "ForEach",
+                        "dependsOn": [
+                            {
+                                "activity": "Truncate Staging Table",
+                                "dependencyConditions": [
+                                    "Succeeded"
+                                ]
+                            }
+                        ],
+                        "userProperties": [],
+                        "typeProperties": {
+                            "items": {
+                                "value": "@activity('Get Task Queries').output.value",
+                                "type": "Expression"
+                            },
+                            "isSequential": true,
+                            "activities": [
+                                {
+                                    "name": "Load Staging Table",
+                                    "description": "Load the source data into the staging table.",
+                                    "type": "Copy",
+                                    "dependsOn": [],
+                                    "policy": {
+                                        "timeout": "0.00:10:00",
+                                        "retry": 0,
+                                        "retryIntervalInSeconds": 30,
+                                        "secureOutput": false,
+                                        "secureInput": false
+                                    },
+                                    "userProperties": [
+                                        {
+                                            "name": "Source",
+                                            "value": "@item().SourceQuery"
+                                        },
+                                        {
+                                            "name": "Target",
+                                            "value": "@{item().TargetSchema}.@{item().TargetTable}"
+                                        }
+                                    ],
+                                    "typeProperties": {
+                                        "source": {
+                                            "type": "AzureSqlSource",
+                                            "sqlReaderQuery": {
+                                                "value": "@item().SourceQuery",
+                                                "type": "Expression"
+                                            },
+                                            "queryTimeout": "00:30:00",
+                                            "partitionOption": "None"
+                                        },
+                                        "sink": {
+                                            "type": "AzureSqlSink",
+                                            "writeBatchSize": 50000,
+                                            "writeBatchTimeout": "00:30:00",
+                                            "writeBehavior": "insert",
+                                            "sqlWriterUseTableLock": false,
+                                            "disableMetricsCollection": false
+                                        },
+                                        "enableStaging": false,
+                                        "dataIntegrationUnits": 2,
+                                        "translator": {
+                                            "type": "Expression",
+                                            "value": "@json(item().ColumnMapping)"
+                                        }
+                                    },
+                                    "inputs": [
+                                        {
+                                            "referenceName": "@[SourceDataset]",
+                                            "type": "DatasetReference",
+                                            "parameters": {
+                                                "KeyVaultSecret": "@item().SourceKeyVaultSecret"
+                                            }
+                                        }
+                                    ],
+                                    "outputs": [
+                                        {
+                                            "referenceName": "@[StagingTableDataset]",
+                                            "type": "DatasetReference",
+                                            "parameters": {
+                                                "SchemaName": {
+                                                    "value": "@item().TargetSchema",
+                                                    "type": "Expression"
+                                                },
+                                                "TableName": {
+                                                    "value": "@item().TargetTable",
+                                                    "type": "Expression"
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        }
+    ]
+}

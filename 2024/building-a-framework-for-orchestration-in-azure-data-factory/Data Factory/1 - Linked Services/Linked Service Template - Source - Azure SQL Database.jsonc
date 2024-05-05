@@ -1,0 +1,127 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "resources": [
+        {
+            "type": "Microsoft.DataFactory/factories/linkedservices",
+            "name": "@[DataFactory]/@[LinkedService]",
+            "apiVersion": "2018-06-01",
+            "dependsOn": [],
+            "properties": {
+                "parameters": {
+                    "KeyVaultSecret": {
+                        "type": "string",
+                        "defaultValue": "@[KeyVaultSecret]"
+                    }
+                },
+                "annotations": [
+                    "FrameworkVersion=1.0"
+                ],
+                "connectVia": {
+                    "type": "IntegrationRuntimeReference",
+                    "referenceName": "@[IntegrationRuntime]"
+                },
+                "type": "AzureSqlDatabase",
+                /*
+                ---------------------------------------------------------
+                    Connection String - Stored in Key Vault
+                    Authentication - Managed Identity 
+                ---------------------------------------------------------
+                */
+                "typeProperties": {
+                    "connectionString": {
+                        "type": "AzureKeyVaultSecret",
+                        "store": {
+                            "referenceName": "@[KeyVault]",
+                            "type": "LinkedServiceReference"
+                        },
+                        "secretName": {
+                            "value": "@linkedService().KeyVaultSecret",
+                            "type": "Expression"
+                        }
+                    }
+                }
+                /*
+                ---------------------------------------------------------
+                    Connection String - Stored in Key Vault
+                    Authentication - Service Principal
+                ---------------------------------------------------------
+                "typeProperties": {
+                    "connectionString": {
+                        "type": "AzureKeyVaultSecret",
+                        "store": {
+                            "referenceName": "@[KeyVault]",
+                            "type": "LinkedServiceReference"
+                        },
+                        "secretName": {
+                            "value": "@linkedService().KeyVaultSecret",
+                            "type": "Expression"
+                        }
+                    },
+                    "tenant": "@[ActiveDirectoryTenantId]",
+                    "servicePrincipalId": "@[ServicePrincipalId]",
+                    "servicePrincipalKey": {
+                        "type": "AzureKeyVaultSecret",
+                        "store": {
+                            "referenceName": "@[KeyVault]",
+                            "type": "LinkedServiceReference"
+                        },
+                        "secretName": "@[ServicePrincipalSecret]"
+                    }
+                },
+                */
+                /*
+                ---------------------------------------------------------
+                    Connection String - Explicitly Typed
+                    Authentication - Managed Identity
+                ---------------------------------------------------------
+                "typeProperties": {
+                    "connectionString": "@[ConnectionString]"
+                },
+                */
+                /*
+                ---------------------------------------------------------
+                    Connection String - Explicitly Typed
+                    Authentication - Service Principal
+                ---------------------------------------------------------
+                "typeProperties": {
+                    "connectionString": "@[ConnectionString]",
+                    "tenant": "@[ActiveDirectoryTenantId]",
+                    "servicePrincipalId": "@[ServicePrincipalId]",
+                    "servicePrincipalKey": {
+                        "type": "AzureKeyVaultSecret",
+                        "store": {
+                            "referenceName": "@[KeyVault]",
+                            "type": "LinkedServiceReference"
+                        },
+                        "secretName": {
+                            "value": "@linkedService().KeyVaultSecret",
+                            "type": "Expression"
+                        }
+                    }
+                },
+                */
+                /*
+                ---------------------------------------------------------
+                    Connection String - Explicitly Typed
+                    Authentication - SQL Authentication (stored in Key Vault)
+                ---------------------------------------------------------
+                "typeProperties": {
+                    "connectionString": "@[ConnectionString]",
+                    "password": {
+                        "type": "AzureKeyVaultSecret",
+                        "store": {
+                            "referenceName": "@[KeyVault]",
+                            "type": "LinkedServiceReference"
+                        },
+                        "secretName": {
+                            "value": "@linkedService().KeyVaultSecret",
+                            "type": "Expression"
+                        }
+                    }
+                },
+                */               
+            }
+        }
+    ]
+}

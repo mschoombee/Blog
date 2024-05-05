@@ -1,0 +1,28 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "resources": [
+        {
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "name": "@[DataFactory]/@[Dataset]",
+            "apiVersion": "2018-06-01",
+            "dependsOn": [],
+            "properties": {
+                "annotations": [
+                    "FrameworkVersion=1.0",
+                    "Type=Azure SQL Database"
+                ],
+                "description": "Generic dataset to an Azure SQL database, used when executing a query or stored proc.",
+                "folder": {
+                    "name": "@[Folder]"
+                },
+                "type": "AzureSqlTable",
+                "linkedServiceName": {
+                    "referenceName": "@[LinkedService]",
+                    "type": "LinkedServiceReference"
+                },
+                "schema": []
+            }
+        }
+    ]
+}
