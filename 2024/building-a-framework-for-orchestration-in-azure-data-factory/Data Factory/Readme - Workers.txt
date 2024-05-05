@@ -19,22 +19,23 @@ To deploy the Worker pipeline template, you will need to have the following in p
 
 1.  A Data Factory.
 2.  Integration Runtime(s) that can facilitate connectivity to your data source, target and metadata.
-3.  A Linked Service for Azure Key Vault, if you are planning to store connections strings there.
+3.  Metadata tables and stored procedures.
+4.  A Linked Service for Azure Key Vault, if you are planning to store connections strings there.
         * See section "Linked Service Template - Azure Key Vault.jsonc".
-4.  A Linked Service for the metadata database.
+5.  A Linked Service for the metadata database.
         * See section "Linked Service Template - Azure SQL Database.jsonc".
-5.  A Linked Service for the target.
+6.  A Linked Service for the target.
         * The only template provided here is for an Azure SQL Database as target.
         * See section "Linked Service Template - Azure SQL Database.jsonc".
-6.  A Linked Service for the source.
+7.  A Linked Service for the source.
         * The only template provided here is for an Azure SQL source.
         * See section "Linked Service Template - Source - Azure SQL Database.jsonc".
-7.  A generic Dataset for the metadata database, to execute queries and/or stored procedures.
+8.  A generic Dataset for the metadata database, to execute queries and/or stored procedures.
         * See section "Dataset Template - Azure SQL Database.jsonc".
-8.  Two Datasets for the target (staging) database.
+9.  Two Datasets for the target (staging) database.
         * Generic Dataset to execute queries and/or stored procedures (see section "Dataset Template - Azure SQL Database.jsonc").
         * Parameterized Dataset to use as sink (target) in Copy activities (see section "Dataset Template - Azure SQL Table.jsonc").
-9.  A Dataset for the source.
+10. A Dataset for the source.
         * See section "Dataset Template - Source - Azure SQL Database.jsonc" for details.
 
 
