@@ -1,6 +1,5 @@
 /************************************************************************************
-Created By	: 	Martin Schoombee 
-				martin.schoombee@28twelve.consulting
+Created By	: 	Martin Schoombee
 Company		:	28twelve consulting
 Date		:	7/17/2023
 Summary		:	This script will be called by an Azure Data Factory pipeline, and the 
