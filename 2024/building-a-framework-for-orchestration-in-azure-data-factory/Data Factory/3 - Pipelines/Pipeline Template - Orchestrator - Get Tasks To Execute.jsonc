@@ -1,0 +1,156 @@
+{
+                "type": "Microsoft.DataFactory/factories/pipelines",
+                "name": "@[DataFactory]/Orchestrator - Get Tasks To Execute",
+                "apiVersion": "2018-06-01",
+                "dependsOn": [],
+                "properties": {
+                    "folder": {
+                        "name": "Orchestrators"
+                    },
+                    "annotations": [
+                        "FrameworkVersion=1.0"
+                    ],
+                    "parameters": {
+                        "SubscriptionId": {
+                            "type": "string"
+                        },
+                        "ResourceGroup": {
+                            "type": "string"
+                        },
+                        "Environment": {
+                            "type": "string"
+                        },
+                        "ProcessName": {
+                            "type": "string"
+                        },
+                        "TaskName": {
+                            "type": "string"
+                        },
+                        "ExecutionSequence": {
+                            "type": "int"
+                        },
+                        "OrchestratorRunId": {
+                            "type": "string"
+                        }
+                    },
+                    "description": "Gets all tasks to execute, based on the parameters provided. Each process will be executed according to its execution sequence number. Processes with the same execution sequence number will be processed in parallel.",
+                    "activities": [
+                        {
+                            "name": "Get Tasks To Execute",
+                            "description": "Gets all the tasks to execute in parallel from the [ETL].[Task] table...based on the process, task and execution sequence number provided as parameters to this pipeline.",
+                            "type": "Lookup",
+                            "dependsOn": [],
+                            "policy": {
+                                "timeout": "0.00:10:00",
+                                "retry": 0,
+                                "retryIntervalInSeconds": 30,
+                                "secureOutput": false,
+                                "secureInput": false
+                            },
+                            "userProperties": [],
+                            "typeProperties": {
+                                "source": {
+                                    "type": "AzureSqlSource",
+                                    "sqlReaderStoredProcedureName": "[[ETL].[GetTasksToExecute]",
+                                    "storedProcedureParameters": {
+                                        "Environment": {
+                                            "type": "String",
+                                            "value": {
+                                                "value": "@pipeline().parameters.Environment",
+                                                "type": "Expression"
+                                            }
+                                        },
+                                        "ProcessName": {
+                                            "type": "String",
+                                            "value": {
+                                                "value": "@pipeline().parameters.ProcessName",
+                                                "type": "Expression"
+                                            }
+                                        },
+                                        "TaskName": {
+                                            "type": "String",
+                                            "value": {
+                                                "value": "@pipeline().parameters.TaskName",
+                                                "type": "Expression"
+                                            }
+                                        },
+                                        "ExecutionSequence": {
+                                            "type": "Int32",
+                                            "value": {
+                                                "value": "@pipeline().parameters.ExecutionSequence",
+                                                "type": "Expression"
+                                            }
+                                        }
+                                    },
+                                    "queryTimeout": "00:10:00",
+                                    "partitionOption": "None"
+                                },
+                                "dataset": {
+                                    "referenceName": "@[Dataset]",
+                                    "type": "DatasetReference"
+                                },
+                                "firstRowOnly": false
+                            }
+                        },
+                        {
+                            "name": "For Each Task",
+                            "type": "ForEach",
+                            "dependsOn": [
+                                {
+                                    "activity": "Get Tasks To Execute",
+                                    "dependencyConditions": [
+                                        "Succeeded"
+                                    ]
+                                }
+                            ],
+                            "userProperties": [],
+                            "typeProperties": {
+                                "items": {
+                                    "value": "@activity('Get Tasks To Execute').output.value",
+                                    "type": "Expression"
+                                },
+                                "isSequential": false,
+                                "batchCount": 5,
+                                "activities": [
+                                    {
+                                        "name": "Execute Task",
+                                        "description": "Executes the pipeline that will facilitate the execution of the task.",
+                                        "type": "ExecutePipeline",
+                                        "dependsOn": [],
+                                        "userProperties": [],
+                                        "typeProperties": {
+                                            "pipeline": {
+                                                "referenceName": "Orchestrator - Execute Task",
+                                                "type": "PipelineReference"
+                                            },
+                                            "waitOnCompletion": true,
+                                            "parameters": {
+                                                "SubscriptionId": {
+                                                    "value": "@pipeline().parameters.SubscriptionId",
+                                                    "type": "Expression"
+                                                },
+                                                "ResourceGroup": {
+                                                    "value": "@pipeline().parameters.ResourceGroup",
+                                                    "type": "Expression"
+                                                },
+                                                "TaskKey": {
+                                                    "value": "@item().TaskKey",
+                                                    "type": "Expression"
+                                                },
+                                                "DataFactoryPipeline": {
+                                                    "value": "@item().DataFactoryPipeline",
+                                                    "type": "Expression"
+                                                },
+                                                "OrchestratorRunId": {
+                                                    "value": "@pipeline().parameters.OrchestratorRunId",
+                                                    "type": "Expression"
+                                                }
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    ]
+                }
+            }

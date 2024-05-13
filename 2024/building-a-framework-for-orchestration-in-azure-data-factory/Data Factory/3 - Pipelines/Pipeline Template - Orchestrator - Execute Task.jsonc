@@ -1,0 +1,321 @@
+{
+                "type": "Microsoft.DataFactory/factories/pipelines",
+                "name": "@[DataFactory]/Orchestrator - Execute Task",
+                "apiVersion": "2018-06-01",
+                "dependsOn": [],
+                "properties": {
+                    "folder": {
+                        "name": "Orchestrators"
+                    },
+                    "annotations": [
+                        "FrameworkVersion=1.0"
+                    ],
+                    "parameters": {
+                        "SubscriptionId": {
+                            "type": "string"
+                        },
+                        "ResourceGroup": {
+                            "type": "string"
+                        },
+                        "TaskKey": {
+                            "type": "int"
+                        },
+                        "DataFactoryPipeline": {
+                            "type": "string"
+                        },
+                        "OrchestratorRunId": {
+                            "type": "string"
+                        }
+                    },
+                    "variables": {
+                        "ExecutionStatus": {
+                            "type": "String",
+                            "defaultValue": "Unknown"
+                        },
+                        "ErrorMessage": {
+                            "type": "String"
+                        },
+                        "RunId": {
+                            "type": "String"
+                        }
+                    },
+                    "description": "Executes each task according to its execution sequence number. Tasks with the same sequence number will be processed in parallel.",
+                    "activities": [
+                        {
+                            "name": "Until Pipeline Execution Completes",
+                            "description": "Waits until the worker pipeline execution is complete, to get the execution status and continue.",
+                            "type": "Until",
+                            "dependsOn": [],
+                            "userProperties": [],
+                            "typeProperties": {
+                                "expression": {
+                                    "value": "@contains(createArray('Succeeded', 'Cancelled', 'Failed'), variables('ExecutionStatus'))",
+                                    "type": "Expression"
+                                },
+                                "activities": [
+                                    {
+                                        "name": "Switch",
+                                        "type": "Switch",
+                                        "dependsOn": [],
+                                        "userProperties": [],
+                                        "typeProperties": {
+                                            "on": {
+                                                "value": "@variables('ExecutionStatus')",
+                                                "type": "Expression"
+                                            },
+                                            "cases": [
+                                                {
+                                                    "value": "Unknown",
+                                                    "activities": [
+                                                        {
+                                                            "name": "Execute Worker Pipeline",
+                                                            "description": "Executes the worker pipeline, extracted from the [ETL].[Task] table.",
+                                                            "type": "WebActivity",
+                                                            "dependsOn": [],
+                                                            "policy": {
+                                                                "timeout": "0.00:10:00",
+                                                                "retry": 0,
+                                                                "retryIntervalInSeconds": 30,
+                                                                "secureOutput": true,
+                                                                "secureInput": true
+                                                            },
+                                                            "userProperties": [],
+                                                            "typeProperties": {
+                                                                "url": {
+                                                                    "value": "https://management.azure.com/subscriptions/@{pipeline().parameters.SubscriptionId}/resourceGroups/@{pipeline().parameters.ResourceGroup}/providers/Microsoft.DataFactory/factories/@{pipeline().DataFactory}/pipelines/@{uriComponent(pipeline().parameters.DataFactoryPipeline)}/createRun?api-version=2018-06-01",
+                                                                    "type": "Expression"
+                                                                },
+                                                                "method": "POST",
+                                                                "body": {
+                                                                    "value": "@json(concat('{\"TaskKey\":', string(pipeline().parameters.TaskKey), '}'))",
+                                                                    "type": "Expression"
+                                                                },
+                                                                "authentication": {
+                                                                    "type": "MSI",
+                                                                    "resource": "https://management.azure.com/"
+                                                                }
+                                                            }
+                                                        },
+                                                        {
+                                                            "name": "Set ExecutionStatus Variable - In Progress",
+                                                            "description": "Sets the ExecutionStatus variable to \"InProgress\".",
+                                                            "type": "SetVariable",
+                                                            "dependsOn": [
+                                                                {
+                                                                    "activity": "Execute Worker Pipeline",
+                                                                    "dependencyConditions": [
+                                                                        "Completed"
+                                                                    ]
+                                                                }
+                                                            ],
+                                                            "userProperties": [],
+                                                            "typeProperties": {
+                                                                "variableName": "ExecutionStatus",
+                                                                "value": {
+                                                                    "value": "InProgress",
+                                                                    "type": "Expression"
+                                                                }
+                                                            }
+                                                        },
+                                                        {
+                                                            "name": "Set RunId Variable",
+                                                            "description": "Sets the RunId variable.",
+                                                            "type": "SetVariable",
+                                                            "dependsOn": [
+                                                                {
+                                                                    "activity": "Execute Worker Pipeline",
+                                                                    "dependencyConditions": [
+                                                                        "Completed"
+                                                                    ]
+                                                                }
+                                                            ],
+                                                            "userProperties": [],
+                                                            "typeProperties": {
+                                                                "variableName": "RunId",
+                                                                "value": {
+                                                                    "value": "@activity('Execute Worker Pipeline').output.runId",
+                                                                    "type": "Expression"
+                                                                }
+                                                            }
+                                                        }
+                                                    ]
+                                                }
+                                            ],
+                                            "defaultActivities": [
+                                                {
+                                                    "name": "Wait - In Progress",
+                                                    "description": "Wait a few seconds while the pipeline execution is in progress.",
+                                                    "type": "Wait",
+                                                    "dependsOn": [],
+                                                    "userProperties": [],
+                                                    "typeProperties": {
+                                                        "waitTimeInSeconds": 10
+                                                    }
+                                                },
+                                                {
+                                                    "name": "Get Worker Pipeline Status",
+                                                    "description": "Gets the execution status of the worker pipeline.",
+                                                    "type": "WebActivity",
+                                                    "dependsOn": [
+                                                        {
+                                                            "activity": "Wait - In Progress",
+                                                            "dependencyConditions": [
+                                                                "Succeeded"
+                                                            ]
+                                                        }
+                                                    ],
+                                                    "policy": {
+                                                        "timeout": "0.00:10:00",
+                                                        "retry": 0,
+                                                        "retryIntervalInSeconds": 30,
+                                                        "secureOutput": true,
+                                                        "secureInput": true
+                                                    },
+                                                    "userProperties": [],
+                                                    "typeProperties": {
+                                                        "url": {
+                                                            "value": "https://management.azure.com/subscriptions/@{pipeline().parameters.SubscriptionId}/resourceGroups/@{pipeline().parameters.ResourceGroup}/providers/Microsoft.DataFactory/factories/@{pipeline().DataFactory}/pipelineruns/@{variables('RunId')}?api-version=2018-06-01",
+                                                            "type": "Expression"
+                                                        },
+                                                        "method": "GET",
+                                                        "authentication": {
+                                                            "type": "MSI",
+                                                            "resource": "https://management.azure.com/"
+                                                        }
+                                                    }
+                                                },
+                                                {
+                                                    "name": "Set ExecutionStatus Variable",
+                                                    "description": "Sets the ExecutionStatus variable from the data returned by the preceding API request.",
+                                                    "type": "SetVariable",
+                                                    "dependsOn": [
+                                                        {
+                                                            "activity": "Get Worker Pipeline Status",
+                                                            "dependencyConditions": [
+                                                                "Succeeded"
+                                                            ]
+                                                        }
+                                                    ],
+                                                    "userProperties": [],
+                                                    "typeProperties": {
+                                                        "variableName": "ExecutionStatus",
+                                                        "value": {
+                                                            "value": "@if(empty(activity('Get Worker Pipeline Status').output), 'Failed', activity('Get Worker Pipeline Status').output.status)",
+                                                            "type": "Expression"
+                                                        }
+                                                    }
+                                                }, 
+                                                {
+                                                    "name": "Set ExecutionStatus Variable - Failed",
+                                                    "description": "Sets the ExecutionStatus variable to Failed if the preceding API request failed to execute.",
+                                                    "type": "SetVariable",
+                                                    "dependsOn": [
+                                                        {
+                                                            "activity": "Get Worker Pipeline Status",
+                                                            "dependencyConditions": [
+                                                                "Failed"
+                                                            ]
+                                                        }
+                                                    ],
+                                                    "userProperties": [],
+                                                    "typeProperties": {
+                                                        "variableName": "ExecutionStatus",
+                                                        "value": "Failed"
+                                                    }
+                                                }, 
+                                                {
+                                                    "name": "Set ErrorMessage Variable",
+                                                    "description": "Sets the ErrorMessage variable from the data returned by the preceding API request.",
+                                                    "type": "SetVariable",
+                                                    "dependsOn": [
+                                                        {
+                                                            "activity": "Get Worker Pipeline Status",
+                                                            "dependencyConditions": [
+                                                                "Succeeded"
+                                                            ]
+                                                        }
+                                                    ],
+                                                    "userProperties": [],
+                                                    "typeProperties": {
+                                                        "variableName": "ErrorMessage",
+                                                        "value": {
+                                                            "value": "@activity('Get Worker Pipeline Status').output.message",
+                                                            "type": "Expression"
+                                                        }
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    }
+                                ],
+                                "timeout": "0.04:00:00"
+                            }
+                        },
+                        {
+                            "name": "If Pipeline Execution Failed",
+                            "description": "Checks the ExecutionStatus variable to see if the pipeline execution failed.",
+                            "type": "IfCondition",
+                            "dependsOn": [
+                                {
+                                    "activity": "Until Pipeline Execution Completes",
+                                    "dependencyConditions": [
+                                        "Completed"
+                                    ]
+                                }
+                            ],
+                            "userProperties": [],
+                            "typeProperties": {
+                                "expression": {
+                                    "value": "@not(equals('Succeeded', variables('ExecutionStatus')))",
+                                    "type": "Expression"
+                                },
+                                "ifTrueActivities": [
+                                    {
+                                        "name": "Fail Pipeline",
+                                        "description": "Force a pipeline failure if the API request returns a failure status.",
+                                        "type": "Fail",
+                                        "dependsOn": [],
+                                        "userProperties": [],
+                                        "typeProperties": {
+                                            "message": {
+                                                "value": "@variables('ErrorMessage')",
+                                                "type": "Expression"
+                                            },
+                                            "errorCode": "100"
+                                        }
+                                    },
+                                    {
+                                        "name": "Fail Main Orchestrator",
+                                        "description": "Explicitly fails the highest parent recursively, to ensure that no other pipelines are executed.",
+                                        "type": "WebActivity",
+                                        "dependsOn": [],
+                                        "policy": {
+                                            "timeout": "0.00:10:00",
+                                            "retry": 0,
+                                            "retryIntervalInSeconds": 30,
+                                            "secureOutput": true,
+                                            "secureInput": true
+                                        },
+                                        "userProperties": [],
+                                        "typeProperties": {
+                                            "url": {
+                                                "value": "https://management.azure.com/subscriptions/@{pipeline().parameters.SubscriptionId}/resourceGroups/@{pipeline().parameters.ResourceGroup}/providers/Microsoft.DataFactory/factories/@{pipeline().DataFactory}/pipelineruns/@{pipeline().parameters.OrchestratorRunId}/cancel?isRecursive=true&api-version=2018-06-01",
+                                                "type": "Expression"
+                                            },
+                                            "body": {
+                                                "value": "@json('{}')",
+                                                "type": "Expression"
+                                            },
+                                            "method": "POST",
+                                            "authentication": {
+                                                "type": "MSI",
+                                                "resource": "https://management.azure.com/"
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    ]
+                }
+            }
