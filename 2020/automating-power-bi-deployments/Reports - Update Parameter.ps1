@@ -100,7 +100,7 @@ try {
     -------------------------------------------------------------------------------------------#>
 
     #API url for parameters
-    $ApiUrl = "groups/" + $WorkspaceObject.Id + "datasets/" + $PbiReportObject.DatasetId + "/Default.UpdateParameters"
+    $ApiUrl = "groups/" + $WorkspaceObject.Id + "/datasets/" + $PbiReportObject.DatasetId + "/Default.UpdateParameters"
 
     #Build the request body
     $ApiRequestBody = @"
